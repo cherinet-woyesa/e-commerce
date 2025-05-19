@@ -1,27 +1,25 @@
 # Modern E-commerce Platform
 
-A modern, responsive e-commerce platform built with React and Next.js, featuring a sleek design and robust functionality.
+A modern, responsive e-commerce platform built with React and Firebase, featuring a sleek UI and robust e-commerce functionality.
 
 ## Features
 
-- Modern and responsive UI design
+- Interactive Hero Section with slide animations
 - Product catalog with categories
 - Shopping cart functionality
 - User authentication
-- Product search and filtering
-- Order management
 - Contact form
 - Responsive navigation
-- Interactive hero section with slide animations
-- Trust indicators and customer testimonials
+- Modern UI with Tailwind CSS
+- Firebase integration for backend services
 
 ## Tech Stack
 
 - React
-- Next.js
-- Tailwind CSS
 - Firebase (Authentication and Database)
+- Tailwind CSS
 - React Router
+- React Icons
 
 ## Getting Started
 
@@ -35,7 +33,7 @@ A modern, responsive e-commerce platform built with React and Next.js, featuring
 1. Clone the repository:
 ```bash
 git clone https://github.com/cherinet-woyesa/modern_ecommerce.git
-cd modern_ecommerce
+cd modern_ecommerce/ecommerce-frontend
 ```
 
 2. Install dependencies:
@@ -45,21 +43,21 @@ npm install
 yarn install
 ```
 
-3. Create a `.env` file in the root directory and add your environment variables:
+3. Create a `.env` file in the root directory and add your Firebase configuration:
 ```
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+REACT_APP_FIREBASE_API_KEY=your_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
 ```
 
 4. Start the development server:
 ```bash
-npm run dev
+npm start
 # or
-yarn dev
+yarn start
 ```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -67,21 +65,28 @@ yarn dev
 ## Project Structure
 
 ```
-ecommerce/
-├── ecommerce-frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── pages/
-│   │   ├── sections/
-│   │   ├── context/
-│   │   ├── services/
-│   │   └── utils/
-│   ├── package.json
+ecommerce-frontend/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── context/        # React context providers
+│   ├── hooks/         # Custom React hooks
+│   ├── pages/         # Page components
+│   ├── sections/      # Reusable page sections
+│   ├── services/      # API and backend services
+│   ├── utils/         # Utility functions
+│   ├── App.js
+│   ├── index.js
 │   └── ...other config files
-└── README.md
+└── public/           # Static assets
 ```
+
+## Key Components
+
+- **HeroSection**: Interactive hero banner with slide animations
+- **Navbar**: Responsive navigation bar
+- **Product Sections**: Category-based product displays
+- **Contact Form**: User feedback and inquiry form
+- **Firebase Integration**: Authentication and database services
 
 ## Contributing
 
@@ -97,5 +102,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Thanks to the React and Next.js communities
-- Special thanks to all contributors
+- Thanks to the React community
+- Special thanks to Firebase for backend services
+- Inspired by modern e-commerce platforms and UI/UX best practices
