@@ -16,6 +16,8 @@ import Signup from './pages/Signup';
 import { useAuth } from './context/AuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { UserProvider } from './context/UserContext';
+import Profile from './pages/Profile';
 
 function PrivateRoute({ children }) {
   const { currentUser } = useAuth();
@@ -26,7 +28,8 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <Router>
+        <UserProvider>
+          <Router>
           <div className="min-h-screen bg-gray-50">
             <Navbar />
             <Routes>
@@ -46,6 +49,11 @@ function App() {
                 </PrivateRoute>
               } />
               <Route path="/order-confirmation" element={<OrderConfirmation />} />
+              <Route path="/profile" element={
+                <PrivateRoute>
+                  <Profile />
+                </PrivateRoute>
+              } />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/contact" element={<Contact />} />
@@ -53,8 +61,9 @@ function App() {
           </div>
           <Footer />
         </Router>
-      </CartProvider>
-    </AuthProvider>
+      </UserProvider>
+    </CartProvider>
+  </AuthProvider>
   );
 }
 

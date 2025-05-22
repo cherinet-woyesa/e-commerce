@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FiCreditCard,
@@ -12,41 +12,36 @@ import {
   FiShield
 } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import StripePaymentForm from '../components/StripePaymentForm';
+import { db } from '../firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 const CheckoutPage = () => {
   const { cartItems, cartTotal, clearCart } = useCart();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  
-  // Form states
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
     lastName: '',
+    phone: '',
     address: '',
     apartment: '',
-    city: '',
     country: 'United States',
     state: '',
     zip: '',
-    phone: '',
+    city: '',
     shippingMethod: 'standard',
     paymentMethod: 'credit',
-    cardNumber: '',
-    cardName: '',
-    cardExp: '',
-    cardCvc: '',
     saveInfo: false,
     agreeTerms: false
   });
+  const [errors, setErrors] = useState({});
 
-  // Calculate order totals
-  const shippingCost = formData.shippingMethod === 'express' ? 9.99 : 0;
-  const tax = cartTotal * 0.08;
-  const grandTotal = cartTotal + shippingCost + tax;
-
+  // Form handlers
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -59,59 +54,119 @@ const CheckoutPage = () => {
     }
   };
 
-  const validateStep = (step) => {
+  const validateStep = (currentStep) => {
     const newErrors = {};
     
-    if (step === 1) {
+    if (currentStep === 1) {
       if (!formData.email) newErrors.email = 'Email is required';
       if (!formData.firstName) newErrors.firstName = 'First name is required';
       if (!formData.lastName) newErrors.lastName = 'Last name is required';
       if (!formData.phone) newErrors.phone = 'Phone is required';
+    }
+
+    if (currentStep === 2) {
       if (!formData.address) newErrors.address = 'Address is required';
       if (!formData.city) newErrors.city = 'City is required';
       if (!formData.state) newErrors.state = 'State is required';
       if (!formData.zip) newErrors.zip = 'ZIP code is required';
+      if (!formData.country) newErrors.country = 'Country is required';
     }
-    
-    if (step === 3 && formData.paymentMethod === 'credit') {
+
+    if (currentStep === 3 && formData.paymentMethod === 'credit') {
       if (!formData.cardNumber) newErrors.cardNumber = 'Card number is required';
       if (!formData.cardName) newErrors.cardName = 'Name on card is required';
       if (!formData.cardExp) newErrors.cardExp = 'Expiration date is required';
-      if (!formData.cardCvc) newErrors.cardCvc = 'Security code is required';
+      if (!formData.cardCvc) newErrors.cardCvc = 'CVC is required';
     }
-    
-    if (step === 3 && !formData.agreeTerms) {
+
+    if (currentStep === 3 && !formData.agreeTerms) {
       newErrors.agreeTerms = 'You must agree to the terms';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNextStep = () => {
-    if (validateStep(step)) {
-      setStep(step + 1);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateStep(step)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Handle payment for final step
+      if (step === 3) {
+        await handleMockPayment({
+          card: {
+            last4: '4242',
+            brand: 'visa',
+            exp_month: new Date().getMonth() + 1,
+            exp_year: new Date().getFullYear() + 1
+          }
+        });
+      } else {
+        setStep(step + 1);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setErrors({ general: 'An error occurred. Please try again.' });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (validateStep(3)) {
+  const handleMockPayment = async (paymentData) => {
+    try {
       setLoading(true);
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Clear cart and proceed to confirmation
-      clearCart();
-      navigate('/order-confirmed', { 
-        state: { 
-          orderId: `ORD-${Math.floor(Math.random() * 1000000)}`,
-          orderTotal: grandTotal.toFixed(2),
-          customerName: `${formData.firstName} ${formData.lastName}`,
-          deliveryDate: new Date(Date.now() + (formData.shippingMethod === 'express' ? 2 : 5) * 24 * 60 * 60 * 1000).toLocaleDateString()
-        } 
+      // Create order in Firebase
+      const orderRef = await db.collection('orders').add({
+        userId: currentUser.uid,
+        items: cartItems,
+        total: cartTotal,
+        shipping: formData.shippingMethod,
+        payment: {
+          method: formData.paymentMethod,
+          card: paymentData.card
+        },
+        shippingAddress: {
+          address: formData.address,
+          apartment: formData.apartment,
+          city: formData.city,
+          state: formData.state,
+          zip: formData.zip,
+          country: formData.country
+        },
+        status: 'pending',
+        createdAt: new Date()
       });
+
+      // Clear cart
+      clearCart();
+      
+      // Navigate to order confirmation
+      navigate(`/order/${orderRef.id}`);
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert('Payment failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate order totals
+  const shippingCost = formData.shippingMethod === 'express' ? 9.99 : 0;
+  const tax = cartTotal * 0.08;
+  const grandTotal = cartTotal + shippingCost + tax;
+
+  const handleNextStep = () => {
+    if (validateStep(step)) {
+      setStep(step + 1);
     }
   };
 
@@ -147,222 +202,320 @@ const CheckoutPage = () => {
   const renderStep = () => {
     switch(step) {
       case 1: return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-bold mb-6">Contact Information</h2>
-          
-          {renderInput('email', 'Email', 'email', 'your@email.com')}
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {renderInput('firstName', 'First Name')}
-            {renderInput('lastName', 'Last Name')}
-          </div>
-          
-          {renderInput('phone', 'Phone', 'tel', '(123) 456-7890')}
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Contact Information</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="your@email.com"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+              </div>
 
-          <h2 className="text-xl font-bold mt-8 mb-6">Shipping Address</h2>
-          
-          {renderInput('address', 'Address', 'text', '123 Main St')}
-          {renderInput('apartment', 'Apartment, suite, etc. (optional)')}
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {renderInput('country', 'Country', 'select', '', ['United States', 'Canada', 'United Kingdom'])}
-            {renderInput('state', 'State')}
-            {renderInput('zip', 'ZIP Code')}
-          </div>
-          
-          {renderInput('city', 'City')}
-          
-          <div className="flex items-center mt-4">
-            <input
-              type="checkbox"
-              id="saveInfo"
-              name="saveInfo"
-              checked={formData.saveInfo}
-              onChange={handleInputChange}
-              className="mr-2"
-            />
-            <label htmlFor="saveInfo">Save this information for next time</label>
-          </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+                </div>
+              </div>
 
-          <div className="mt-8 flex justify-between">
-            <button
-              type="button"
-              onClick={() => navigate('/cart')}
-              className="flex items-center gap-2 px-6 py-3 border rounded-lg font-medium hover:bg-gray-50"
-            >
-              <FiChevronLeft /> Return to Cart
-            </button>
-            <button
-              type="button"
-              onClick={handleNextStep}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-            >
-              Continue to Shipping
-            </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="(123) 456-7890"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+              </div>
+
+              <h2 className="text-xl font-bold mt-8 mb-6">Shipping Address</h2>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Address</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  placeholder="123 Main St"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Apartment, suite, etc. (optional)</label>
+                <input
+                  type="text"
+                  name="apartment"
+                  value={formData.apartment}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Country</label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="United States">United States</option>
+                    <option value="Canada">Canada</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                  </select>
+                  {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">State</label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">ZIP Code</label>
+                  <input
+                    type="text"
+                    name="zip"
+                    value={formData.zip}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  {errors.zip && <p className="text-red-500 text-sm mt-1">{errors.zip}</p>}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">City</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+              </div>
+
+              <div className="flex items-center mt-4">
+                <input
+                  type="checkbox"
+                  id="saveInfo"
+                  name="saveInfo"
+                  checked={formData.saveInfo}
+                  onChange={handleInputChange}
+                  className="mr-2"
+                />
+                <label htmlFor="saveInfo">Save this information for next time</label>
+              </div>
+
+              <div className="mt-8 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => navigate('/cart')}
+                  className="flex items-center gap-2 px-6 py-3 border rounded-lg font-medium hover:bg-gray-50"
+                >
+                  <FiChevronLeft /> Return to Cart
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 ${loading ? 'opacity-75' : ''}`}
+                >
+                  {loading ? 'Processing...' : 'Continue to Shipping'}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </form>
       );
 
       case 2: return (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-bold mb-6">Shipping Method</h2>
-          
-          <div className="space-y-4 mb-8">
-            <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${formData.shippingMethod === 'standard' ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-500'}`}>
-              <input
-                type="radio"
-                name="shippingMethod"
-                value="standard"
-                checked={formData.shippingMethod === 'standard'}
-                onChange={handleInputChange}
-                className="mr-3"
-              />
-              <div className="flex-1">
-                <div className="font-medium">Standard Shipping</div>
-                <div className="text-sm text-gray-500">3-5 business days • FREE</div>
-              </div>
-              <div className="font-medium">$0.00</div>
-            </label>
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Shipping Method</h2>
             
-            <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${formData.shippingMethod === 'express' ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-500'}`}>
-              <input
-                type="radio"
-                name="shippingMethod"
-                value="express"
-                checked={formData.shippingMethod === 'express'}
-                onChange={handleInputChange}
-                className="mr-3"
-              />
-              <div className="flex-1">
-                <div className="font-medium">Express Shipping</div>
-                <div className="text-sm text-gray-500">1-2 business days</div>
-              </div>
-              <div className="font-medium">$9.99</div>
-            </label>
-          </div>
+            <div className="space-y-4 mb-8">
+              <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${formData.shippingMethod === 'standard' ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-500'}`}>
+                <input
+                  type="radio"
+                  name="shippingMethod"
+                  value="standard"
+                  checked={formData.shippingMethod === 'standard'}
+                  onChange={handleInputChange}
+                  className="mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">Standard Shipping</div>
+                  <div className="text-sm text-gray-500">3-5 business days • FREE</div>
+                </div>
+                <div className="font-medium">$0.00</div>
+              </label>
+              
+              <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${formData.shippingMethod === 'express' ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-500'}`}>
+                <input
+                  type="radio"
+                  name="shippingMethod"
+                  value="express"
+                  checked={formData.shippingMethod === 'express'}
+                  onChange={handleInputChange}
+                  className="mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">Express Shipping</div>
+                  <div className="text-sm text-gray-500">1-2 business days</div>
+                </div>
+                <div className="font-medium">$9.99</div>
+              </label>
+            </div>
 
-          <div className="flex justify-between">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="px-6 py-3 border rounded-lg font-medium hover:bg-gray-50"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={handleNextStep}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-            >
-              Continue to Payment
-            </button>
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-6 py-3 border rounded-lg font-medium hover:bg-gray-50"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 ${loading ? 'opacity-75' : ''}`}
+              >
+                {loading ? 'Processing...' : 'Continue to Payment'}
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
       );
 
       case 3: return (
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-bold mb-6">Payment Method</h2>
-          
-          <div className="space-y-4 mb-6">
-            <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${formData.paymentMethod === 'credit' ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-500'}`}>
-              <input
-                type="radio"
-                name="paymentMethod"
-                value="credit"
-                checked={formData.paymentMethod === 'credit'}
-                onChange={handleInputChange}
-                className="mr-3"
-              />
-              <div className="flex-1">
-                <div className="font-medium">Credit/Debit Card</div>
-                <div className="flex gap-2 mt-2">
-                  {['visa', 'mastercard', 'amex'].map(card => (
-                    <img key={card} src={`/payment-${card}.svg`} alt={card} className="h-6" />
-                  ))}
-                </div>
-              </div>
-              <FiCreditCard className="text-gray-500" />
-            </label>
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Payment Method</h2>
             
-            <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${formData.paymentMethod === 'paypal' ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-500'}`}>
-              <input
-                type="radio"
-                name="paymentMethod"
-                value="paypal"
-                checked={formData.paymentMethod === 'paypal'}
-                onChange={handleInputChange}
-                className="mr-3"
-              />
-              <div className="font-medium">PayPal</div>
-              <img src="/payment-paypal.svg" alt="PayPal" className="h-6 ml-auto" />
-            </label>
-          </div>
-
-          {formData.paymentMethod === 'credit' && (
             <div className="space-y-4 mb-6">
-              {renderInput('cardNumber', 'Card Number', 'text', '1234 5678 9012 3456')}
-              {renderInput('cardName', 'Name on Card')}
-              
-              <div className="grid grid-cols-2 gap-4">
-                {renderInput('cardExp', 'Expiration Date', 'text', 'MM/YY')}
-                {renderInput('cardCvc', 'Security Code', 'text', 'CVC')}
+              <label className={`flex items-center p-4 border rounded-lg cursor-pointer ${formData.paymentMethod === 'credit' ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-500'}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="credit"
+                  checked={formData.paymentMethod === 'credit'}
+                  onChange={handleInputChange}
+                  className="mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">Credit/Debit Card</div>
+                  <div className="flex gap-2 mt-2">
+                    {['visa', 'mastercard', 'amex'].map(card => (
+                      <img key={card} src={`/payment-${card}.svg`} alt={card} className="h-6" />
+                    ))}
+                  </div>
+                </div>
+                <FiCreditCard className="text-gray-500" />
+              </label>
+            </div>
+
+            {formData.paymentMethod === 'credit' && (
+              <StripePaymentForm 
+                amount={grandTotal}
+                onSubmit={handleMockPayment}
+              />
+            )}
+
+            <div className="border-t border-gray-200 pt-6 mb-6">
+              <h3 className="font-medium mb-4">Billing Address</h3>
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="sameAsShipping"
+                  name="sameAsShipping"
+                  checked={formData.sameAsShipping}
+                  onChange={handleInputChange}
+                  className="mr-2"
+                />
+                <label htmlFor="sameAsShipping">Same as shipping address</label>
               </div>
             </div>
-          )}
 
-          <div className="border-t border-gray-200 pt-6 mb-6">
-            <h3 className="font-medium mb-4">Billing Address</h3>
-            <div className="flex items-center mb-4">
+            <div className="flex items-start mb-6">
               <input
                 type="checkbox"
-                id="sameAsShipping"
-                className="mr-2"
-                defaultChecked
+                id="agreeTerms"
+                name="agreeTerms"
+                checked={formData.agreeTerms}
+                onChange={handleInputChange}
+                className="mr-2 mt-1"
               />
-              <label htmlFor="sameAsShipping">Same as shipping address</label>
+              <label htmlFor="agreeTerms" className="text-sm">
+                I agree to the Terms of Service and Privacy Policy
+              </label>
+              {errors.agreeTerms && <p className="text-red-500 text-xs mt-1">{errors.agreeTerms}</p>}
             </div>
-          </div>
 
-          <div className="flex items-start mb-6">
-            <input
-              type="checkbox"
-              id="agreeTerms"
-              name="agreeTerms"
-              checked={formData.agreeTerms}
-              onChange={handleInputChange}
-              className="mr-2 mt-1"
-            />
-            <label htmlFor="agreeTerms" className="text-sm">
-              I agree to the Terms of Service and Privacy Policy
-            </label>
-            {errors.agreeTerms && <p className="text-red-500 text-xs mt-1">{errors.agreeTerms}</p>}
-          </div>
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+              <FiShield className="text-green-500" />
+              <span>Your transaction is secured with SSL encryption</span>
+            </div>
 
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-            <FiShield className="text-green-500" />
-            <span>Your transaction is secured with SSL encryption</span>
-          </div>
-
-          <div className="flex justify-between">
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              className="px-6 py-3 border rounded-lg font-medium hover:bg-gray-50"
-            >
-              Back
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className={`px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2 ${loading ? 'opacity-75' : ''}`}
-            >
-              {loading ? 'Processing...' : (
-                <>
-                  <FiLock /> Complete Order
-                </>
-              )}
-            </button>
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="px-6 py-3 border rounded-lg font-medium hover:bg-gray-50"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2 ${loading ? 'opacity-75' : ''}`}
+              >
+                {loading ? 'Processing...' : (
+                  <>
+                    <FiLock /> Complete Order
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       );
@@ -406,41 +559,35 @@ const CheckoutPage = () => {
 
         {/* Order Summary */}
         <div className="lg:w-1/3">
-          <div className="bg-gray-50 p-6 rounded-xl sticky top-4">
-            <h2 className="text-xl font-bold mb-6">Order Summary</h2>
-            
-            <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
-              {cartItems.map(item => (
-                <div key={`${item.id}-${item.color}`} className="flex justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-contain p-2" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{item.name}</h3>
-                      <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
-                      {item.color && item.color !== 'N/A' && (
-                        <p className="text-sm text-gray-500">Color: {item.color}</p>
-                      )}
-                    </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h3 className="text-xl font-bold mb-4">Order Summary</h3>
+            <div className="space-y-4">
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">{item.name}</h4>
+                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
                   </div>
-                  <div className="font-medium">${(item.price * item.quantity).toFixed(2)}</div>
+                  <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
-            </div>
-
-            <div className="border-t border-gray-200 pt-4 space-y-3">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Shipping</span>
-                <span>{shippingCost === 0 ? 'FREE' : `$${shippingCost.toFixed(2)}`}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax</span>
-                <span>${tax.toFixed(2)}</span>
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>${cartTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Shipping</span>
+                  <span>${shippingCost.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Tax</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
+                <div className="border-t border-gray-200 pt-4 flex justify-between font-medium">
+                  <span>Total</span>
+                  <span>${grandTotal.toFixed(2)}</span>
+                </div>
               </div>
               <div className="flex justify-between font-bold text-lg pt-2">
                 <span>Total</span>
