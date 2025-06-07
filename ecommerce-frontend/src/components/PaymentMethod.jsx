@@ -1,28 +1,32 @@
 import React from 'react';
-import { FiCreditCard } from 'react-icons/fi';
-import { FaPaypal, FaApple } from 'react-icons/fa';
+import { FiCreditCard, FiPhone, FiBank, FiMoney } from 'react-icons/fi';
+import { FaPaypal } from 'react-icons/fa';
+import { PAYMENT_METHODS } from '../config/paymentConfig';
 
 const PaymentMethod = ({ selectedMethod, onSelect }) => {
-  const methods = [
-    {
-      id: 'credit',
-      name: 'Credit/Debit Card',
-      icon: FiCreditCard,
-      cards: ['visa', 'mastercard', 'amex'],
-    },
-    {
-      id: 'paypal',
-      name: 'PayPal',
-      icon: FaPaypal,
-      cards: [],
-    },
-    {
-      id: 'apple',
-      name: 'Apple Pay',
-      icon: FaApple,
-      cards: [],
-    },
-  ];
+  const methods = Object.values(PAYMENT_METHODS).map(method => ({
+    id: method.id,
+    name: method.label,
+    icon: method.icon,
+    cards: method.id === 'stripe' ? ['visa', 'mastercard', 'amex'] : []
+  }));
+
+  const getIcon = (iconName) => {
+    switch (iconName) {
+      case 'fi-credit-card':
+        return FiCreditCard;
+      case 'fi-phone':
+        return FiPhone;
+      case 'fi-bank':
+        return FiBank;
+      case 'fi-money':
+        return FiMoney;
+      case 'fi-paypal':
+        return FaPaypal;
+      default:
+        return FiCreditCard;
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -40,6 +44,26 @@ const PaymentMethod = ({ selectedMethod, onSelect }) => {
             name="paymentMethod"
             value={method.id}
             checked={selectedMethod === method.id}
+            onChange={() => onSelect(method.id)}
+            className="mr-4"
+          />
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-800">
+              {method.name}
+            </div>
+            {method.cards.length > 0 && (
+              <div className="flex gap-2 mt-2">
+                {method.cards.map((card) => (
+                  <img
+                    key={card}
+                    src={`/payment-${card}.svg`}
+                    alt={card}
+                    className="h-6"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
             onChange={() => onSelect(method.id)}
             className="mr-4"
           />

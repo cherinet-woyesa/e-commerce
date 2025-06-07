@@ -12,7 +12,7 @@ import {
 import { useCart } from '../context/CartContext';
 
 const ProductPage = () => {
-  const { addToCart } = useCart();
+  const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState('');
@@ -69,6 +69,22 @@ const ProductPage = () => {
       color: selectedColor || 'N/A'
     }, quantity);
   };
+
+  const handleWishlistToggle = () => {
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id);
+    } else {
+      addToWishlist({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.images[0],
+        color: selectedColor || 'N/A'
+      });
+    }
+  };
+
+  const isWishlisted = isInWishlist(product.id);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -185,8 +201,16 @@ const ProductPage = () => {
             >
               <FiShoppingCart /> Add to Cart
             </button>
-            <button className="flex-1 bg-gray-100 text-gray-800 py-4 px-6 rounded-lg font-medium hover:bg-gray-200 flex items-center justify-center gap-2">
-              <FiHeart /> Wishlist
+            <button 
+              onClick={handleWishlistToggle}
+              className={`flex-1 py-4 px-6 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                isWishlisted 
+                  ? 'bg-red-500 text-white hover:bg-red-600' 
+                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              }`}
+            >
+              <FiHeart className={isWishlisted ? 'fill-current' : ''} /> 
+              {isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
             </button>
           </div>
 

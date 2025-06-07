@@ -49,11 +49,6 @@ const CartPage = () => {
     }
   };
 
-  const proceedToCheckout = () => {
-    // In a real app, you might save cart data before proceeding
-    window.location.href = '/checkout';
-  };
-
   if (cartCount === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12 text-center">
@@ -187,12 +182,12 @@ const CartPage = () => {
             </div>
           </div>
 
-          <button 
-            onClick={proceedToCheckout}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 mb-4"
+          <Link
+            to="/checkoutpage"
+            className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center justify-center gap-2"
           >
-            Proceed to Checkout
-          </button>
+            <FiShoppingCart /> Proceed to Checkout
+          </Link>
 
           <div className="flex items-center gap-2 text-sm text-gray-500 justify-center mb-6">
             <FiLock className="text-gray-400" />

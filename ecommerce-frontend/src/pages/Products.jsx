@@ -11,6 +11,7 @@ import {
   FiStar
 } from 'react-icons/fi';
 import { RiFlashlightFill } from 'react-icons/ri';
+import { useCart } from '../context/CartContext';
 
 // Sample product data
 const allProducts = [
@@ -46,27 +47,27 @@ const allProducts = [
 
 // Categories for filtering
 const categories = [
-  { name: 'All', value: 'all' },
-  { name: 'Electronics', value: 'Electronics' },
-  { name: 'Fashion', value: 'Fashion' },
-  { name: 'Home', value: 'Home' },
-  { name: 'Beauty', value: 'Beauty' }
+  { id: 'all', name: 'All Products' },
+  { id: 'clothing', name: 'Clothing' },
+  { id: 'electronics', name: 'Electronics' },
+  { id: 'home', name: 'Home & Living' },
+  { id: 'beauty', name: 'Beauty & Personal Care' }
 ];
 
 // Sorting options
 const sortOptions = [
-  { name: 'Featured', value: 'featured' },
-  { name: 'Price: Low to High', value: 'price-asc' },
-  { name: 'Price: High to Low', value: 'price-desc' },
-  { name: 'Newest', value: 'newest' },
-  { name: 'Highest Rated', value: 'rating' }
+  { id: 'featured', name: 'Featured' },
+  { id: 'price-low-high', name: 'Price: Low to High' },
+  { id: 'price-high-low', name: 'Price: High to Low' },
+  { id: 'newest', name: 'Newest' }
 ];
 
 const ProductsPage = () => {
+  const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState(allProducts);
   const [filteredProducts, setFilteredProducts] = useState(allProducts);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     category: 'all',
@@ -99,17 +100,14 @@ const ProductsPage = () => {
     
     // Sorting
     switch (activeFilters.sort) {
-      case 'price-asc':
+      case 'price-low-high':
         result.sort((a, b) => a.price - b.price);
         break;
-      case 'price-desc':
+      case 'price-high-low':
         result.sort((a, b) => b.price - a.price);
         break;
       case 'newest':
         result.sort((a, b) => b.isNew - a.isNew);
-        break;
-      case 'rating':
-        result.sort((a, b) => b.rating - a.rating);
         break;
       default:
         // Featured (default sorting)
@@ -131,25 +129,190 @@ const ProductsPage = () => {
     }));
   }, [searchParams]);
 
-  const handleFilterChange = (filterName, value) => {
+  const handleFilterChange = (filterType, value) => {
     setActiveFilters(prev => ({
       ...prev,
-      [filterName]: value
+      [filterType]: value
     }));
     
     // Update URL params
     const newParams = new URLSearchParams(searchParams);
-    if (filterName === 'category') {
+    if (filterType === 'category') {
       value === 'all' 
         ? newParams.delete('category') 
         : newParams.set('category', value);
     }
-    if (filterName === 'sort') {
+    if (filterType === 'sort') {
       value === 'featured' 
         ? newParams.delete('sort') 
         : newParams.set('sort', value);
     }
     setSearchParams(newParams);
+  };
+
+  const handleColorToggle = (color) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      colors: prev.colors.includes(color)
+        ? prev.colors.filter(c => c !== color)
+        : [...prev.colors, color]
+    }));
+  };
+
+  const handleSortChange = (sortOption) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      sort: sortOption
+    }));
+  };
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+  };
+
+  const handleMobileFiltersToggle = () => {
+    setMobileFiltersOpen(!mobileFiltersOpen);
+  };
+
+  const ProductCard = ({ product, viewMode }) => {
+    const isWishlisted = isInWishlist(product.id);
+
+    const handleAddToCart = (e) => {
+      e.preventDefault();
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        color: product.colors[0] || 'N/A'
+      });
+    };
+
+    const handleWishlistToggle = (e) => {
+      e.preventDefault();
+      if (isWishlisted) {
+        removeFromWishlist(product.id);
+      } else {
+        addToWishlist({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          color: product.colors[0] || 'N/A'
+        });
+      }
+    };
+
+    if (viewMode === 'list') {
+      return (
+        <div className="flex bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="w-1/3">
+            <img 
+              src={product.image} 
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex-1 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              {[...Array(5)].map((_, i) => (
+                <FiStar 
+                  key={i} 
+                  className={`${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} 
+                />
+              ))}
+              <span className="text-sm text-gray-500">({product.reviews})</span>
+            </div>
+            
+            <h3 className="font-medium mb-2">{product.name}</h3>
+            
+            <div className="flex items-center gap-2 mb-4">
+              <span className="font-bold">${product.price}</span>
+              {product.originalPrice && (
+                <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={handleAddToCart}
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+              >
+                <FiShoppingCart /> Add to Cart
+              </button>
+              <button
+                onClick={handleWishlistToggle}
+                className={`p-2 rounded-lg ${
+                  isWishlisted 
+                    ? 'bg-red-500 text-white' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <FiHeart className={isWishlisted ? 'fill-current' : ''} />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Default grid view
+    return (
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="relative">
+          <img 
+            src={product.image} 
+            alt={product.name}
+            className="w-full aspect-square object-cover"
+          />
+          <button
+            onClick={handleWishlistToggle}
+            className={`absolute top-2 right-2 p-2 rounded-full ${
+              isWishlisted 
+                ? 'bg-red-500 text-white' 
+                : 'bg-white text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <FiHeart className={isWishlisted ? 'fill-current' : ''} />
+          </button>
+          {product.isNew && (
+            <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+              NEW
+            </span>
+          )}
+        </div>
+        
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            {[...Array(5)].map((_, i) => (
+              <FiStar 
+                key={i} 
+                className={`${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} 
+              />
+            ))}
+            <span className="text-sm text-gray-500">({product.reviews})</span>
+          </div>
+          
+          <h3 className="font-medium mb-2">{product.name}</h3>
+          
+          <div className="flex items-center gap-2 mb-4">
+            <span className="font-bold">${product.price}</span>
+            {product.originalPrice && (
+              <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddToCart}
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+            >
+              <FiShoppingCart /> Add to Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -171,7 +334,7 @@ const ProductsPage = () => {
           {/* Filters sidebar - mobile */}
           <div className="md:hidden mb-6">
             <button
-              onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+              onClick={handleMobileFiltersToggle}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg"
             >
               <FiFilter />
@@ -211,13 +374,13 @@ const ProductsPage = () => {
                 {/* View mode toggle */}
                 <div className="flex border rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => handleViewModeChange('grid')}
                     className={`p-2 ${viewMode === 'grid' ? 'bg-gray-200' : 'bg-white'}`}
                   >
                     <FiGrid />
                   </button>
                   <button
-                    onClick={() => setViewMode('list')}
+                    onClick={() => handleViewModeChange('list')}
                     className={`p-2 ${viewMode === 'list' ? 'bg-gray-200' : 'bg-white'}`}
                   >
                     <FiList />
@@ -228,11 +391,11 @@ const ProductsPage = () => {
                 <div className="relative">
                   <select
                     value={activeFilters.sort}
-                    onChange={(e) => handleFilterChange('sort', e.target.value)}
+                    onChange={(e) => handleSortChange(e.target.value)}
                     className="appearance-none pl-3 pr-8 py-2 border rounded-lg text-sm bg-white"
                   >
                     {sortOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
+                      <option key={option.id} value={option.id}>
                         {option.name}
                       </option>
                     ))}
@@ -304,17 +467,17 @@ const FilterSidebar = ({ activeFilters, onFilterChange, categories }) => {
         <h3 className="font-medium text-gray-900 mb-2">Categories</h3>
         <div className="space-y-2">
           {categories.map((category) => (
-            <div key={category.value} className="flex items-center">
+            <div key={category.id} className="flex items-center">
               <input
-                id={`category-${category.value}`}
+                id={`category-${category.id}`}
                 name="category"
                 type="radio"
-                checked={activeFilters.category === category.value}
-                onChange={() => onFilterChange('category', category.value)}
+                checked={activeFilters.category === category.id}
+                onChange={() => onFilterChange('category', category.id)}
                 className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <label
-                htmlFor={`category-${category.value}`}
+                htmlFor={`category-${category.id}`}
                 className="ml-3 text-sm text-gray-600"
               >
                 {category.name}
@@ -375,156 +538,6 @@ const FilterSidebar = ({ activeFilters, onFilterChange, categories }) => {
       >
         Reset all filters
       </button>
-    </div>
-  );
-};
-
-// Product card component
-const ProductCard = ({ product, viewMode }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  if (viewMode === 'list') {
-    return (
-      <div className="flex flex-col sm:flex-row gap-6 p-4 border rounded-lg hover:shadow-md transition-shadow">
-        <div className="sm:w-48 flex-shrink-0">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-48 object-cover rounded-lg"
-          />
-        </div>
-        <div className="flex-1">
-          <div className="flex justify-between">
-            <h3 className="text-lg font-medium text-gray-900">
-              <Link to={`/product/${product.id}`}>{product.name}</Link>
-            </h3>
-            <div className="text-lg font-bold text-blue-600">
-              ${product.price}
-              {product.originalPrice && (
-                <span className="ml-2 text-sm text-gray-500 line-through">
-                  ${product.originalPrice}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="mt-1 flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <FiStar 
-                key={i} 
-                className={`${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} 
-              />
-            ))}
-            <span className="ml-2 text-sm text-gray-500">({product.reviews})</span>
-          </div>
-          
-          <p className="mt-2 text-gray-600">{product.category}</p>
-          
-          <div className="mt-4 flex items-center gap-2">
-            {product.colors.map((color) => (
-              <div 
-                key={color}
-                className="w-4 h-4 rounded-full border border-gray-200"
-                style={{ backgroundColor: color.toLowerCase() }}
-                title={color}
-              />
-            ))}
-          </div>
-          
-          <div className="mt-6 flex items-center gap-4">
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              <FiShoppingCart /> Add to Cart
-            </button>
-            <button className="p-2 text-gray-600 hover:text-red-500 transition-colors">
-              <FiHeart />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Default grid view
-  return (
-    <div 
-      className="group relative bg-white rounded-lg border overflow-hidden hover:shadow-lg transition-all"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Product badges */}
-      <div className="absolute top-3 left-3 z-10 flex gap-2">
-        {product.isNew && (
-          <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">
-            NEW
-          </span>
-        )}
-        {product.isBestSeller && (
-          <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded">
-            BESTSELLER
-          </span>
-        )}
-      </div>
-      
-      {/* Quick actions */}
-      <div className={`absolute top-3 right-3 z-10 flex gap-2 transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-        <button className="w-8 h-8 flex items-center justify-center bg-white rounded-full shadow hover:bg-gray-100">
-          <FiHeart className="text-gray-700" />
-        </button>
-      </div>
-      
-      {/* Product image */}
-      <div className="relative pt-[100%] overflow-hidden">
-        <img
-          src={product.image}
-          alt={product.name}
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 ${isHovered ? 'scale-110' : 'scale-100'}`}
-        />
-      </div>
-      
-      {/* Product info */}
-      <div className="p-4">
-        <div className="flex items-center mb-1">
-          {[...Array(5)].map((_, i) => (
-            <FiStar 
-              key={i} 
-              className={`${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} 
-            />
-          ))}
-          <span className="ml-1 text-sm text-gray-500">({product.reviews})</span>
-        </div>
-        
-        <h3 className="font-medium text-gray-900 mb-1">
-          <Link to={`/product/${product.id}`} className="hover:text-blue-600">
-            {product.name}
-          </Link>
-        </h3>
-        
-        <p className="text-sm text-gray-500 mb-2">{product.category}</p>
-        
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-lg font-bold text-gray-900">${product.price}</span>
-            {product.originalPrice && (
-              <span className="ml-2 text-sm text-gray-500 line-through">
-                ${product.originalPrice}
-              </span>
-            )}
-          </div>
-          
-          {product.originalPrice && (
-            <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-              {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
-            </span>
-          )}
-        </div>
-        
-        {/* Add to cart button */}
-        <button
-          className={`mt-4 w-full py-2 bg-gray-900 text-white rounded-lg flex items-center justify-center gap-2 transition-all ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
-        >
-          <FiShoppingCart /> Add to Cart
-        </button>
-      </div>
     </div>
   );
 };

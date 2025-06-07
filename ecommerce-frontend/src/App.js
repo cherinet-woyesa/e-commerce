@@ -17,6 +17,7 @@ import { useAuth } from './context/AuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { UserProvider } from './context/UserContext';
+import PaymentProvider from './context/PaymentContext';
 import Profile from './pages/Profile';
 
 function PrivateRoute({ children }) {
@@ -29,41 +30,43 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <UserProvider>
-          <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/category/fashion" element={<Products category="fashion" />} />
-              <Route path="/category/electronics" element={<Products category="electronics" />} />
-              <Route path="/category/laptops" element={<Products category="laptops" />} />
-              <Route path="/wishlist" element={<Products category="wishlist" />} />
-              <Route path="/product/:id" element={<ProductDetails />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/new-arrivals" element={<NewArrivals />} />
-              <Route path="/checkout" element={
-                <PrivateRoute>
-                  <CheckoutPage />
-                </PrivateRoute>
-              } />
-              <Route path="/order-confirmation" element={<OrderConfirmation />} />
-              <Route path="/profile" element={
-                <PrivateRoute>
-                  <Profile />
-                </PrivateRoute>
-              } />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/contact" element={<Contact />} />
-            </Routes>
-          </div>
-          <Footer />
-        </Router>
-      </UserProvider>
-    </CartProvider>
-  </AuthProvider>
+          <PaymentProvider>
+            <Router>
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/category/fashion" element={<Products category="fashion" />} />
+                  <Route path="/category/electronics" element={<Products category="electronics" />} />
+                  <Route path="/category/laptops" element={<Products category="laptops" />} />
+                  <Route path="/wishlist" element={<Products category="wishlist" />} />
+                  <Route path="/product/:id" element={<ProductDetails />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/new-arrivals" element={<NewArrivals />} />
+                  <Route path="/checkoutpage" element={
+                    <PrivateRoute>
+                      <CheckoutPage />
+                    </PrivateRoute>
+                  } />
+                  <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                  <Route path="/profile" element={
+                    <PrivateRoute>
+                      <Profile />
+                    </PrivateRoute>
+                  } />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/contact" element={<Contact />} />
+                </Routes>
+              </div>
+              <Footer />
+            </Router>
+          </PaymentProvider>
+        </UserProvider>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 

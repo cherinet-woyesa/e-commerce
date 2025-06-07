@@ -36,21 +36,60 @@ const NewArrivalsPage = () => {
           name: 'Ultra Slim Smartwatch',
           price: 249.99,
           originalPrice: 299.99,
-          image: '/images/smartwatch.jpg',
+          image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
           category: 'electronics',
           rating: 4.7,
           reviews: 124,
           colors: ['Black', 'Silver', 'Rose Gold'],
           releaseDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+          isNew: true,
+          isLimited: true
+        },
+        {
+          id: 2,
+          name: 'Noise Cancelling Headphones',
+          price: 179.99,
+          originalPrice: 229.99,
+          image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80',
+          category: 'electronics',
+          rating: 4.9,
+          reviews: 215,
+          colors: ['Black', 'Blue'],
+          releaseDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+          isBestSeller: true
+        },
+        {
+          id: 3,
+          name: 'Wireless Charging Pad',
+          price: 39.99,
+          originalPrice: 49.99,
+          image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=800&q=80',
+          category: 'electronics',
+          rating: 4.5,
+          reviews: 89,
+          colors: ['White', 'Black'],
+          releaseDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
           isNew: true
         },
-        // More products...
+        {
+          id: 4,
+          name: 'Premium Leather Wallet',
+          price: 59.99,
+          originalPrice: 79.99,
+          image: 'https://images.unsplash.com/photo-1591561954555-607968c989ab?auto=format&fit=crop&w=800&q=80',
+          category: 'fashion',
+          rating: 4.8,
+          reviews: 156,
+          colors: ['Brown', 'Black'],
+          releaseDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+          isLimited: true
+        },
         {
           id: 5,
           name: 'Wireless Earbuds Pro',
           price: 179.99,
           originalPrice: 229.99,
-          image: '/images/earbuds.jpg',
+          image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80',
           category: 'electronics',
           rating: 4.9,
           reviews: 215,

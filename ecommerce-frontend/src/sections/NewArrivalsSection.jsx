@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiShoppingCart, FiHeart, FiClock, FiArrowRight, FiStar } from 'react-icons/fi';
 import { RiFlashlightFill } from 'react-icons/ri';
+import { useCart } from '../context/CartContext';
 
 const NewArrivalsSection = () => {
   const [hoveredProduct, setHoveredProduct] = useState(null);
+  const { addToCart, addToWishlist, isInWishlist } = useCart();
   
   const newArrivals = [
     {
@@ -64,6 +66,18 @@ const NewArrivalsSection = () => {
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  const handleAddToCart = (product) => {
+    addToCart({
+      ...product,
+      quantity: 1,
+      color: product.colors[0] // Default to first color
+    });
+  };
+
+  const handleAddToWishlist = (product) => {
+    addToWishlist(product);
+  };
+
   return (
     <section className="py-20 px-4 md:px-8 bg-gradient-to-b from-white to-gray-50 relative overflow-hidden">
       {/* Decorative elements */}
@@ -121,8 +135,11 @@ const NewArrivalsSection = () => {
               
               {/* Quick actions */}
               <div className={`absolute top-4 right-4 z-10 flex flex-col gap-2 transition-opacity duration-300 ${hoveredProduct === product.id ? 'opacity-100' : 'opacity-0'}`}>
-                <button className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors">
-                  <FiHeart className="text-gray-700" />
+                <button 
+                  onClick={() => handleAddToWishlist(product)}
+                  className={`w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors ${isInWishlist(product.id) ? 'text-red-500' : 'text-gray-700'}`}
+                >
+                  <FiHeart className={isInWishlist(product.id) ? 'fill-current' : ''} />
                 </button>
               </div>
               
@@ -135,7 +152,10 @@ const NewArrivalsSection = () => {
                 />
                 
                 {/* Add to cart button */}
-                <button className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full font-medium flex items-center gap-2 transition-all duration-300 ${hoveredProduct === product.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                <button 
+                  onClick={() => handleAddToCart(product)}
+                  className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full font-medium flex items-center gap-2 transition-all duration-300 ${hoveredProduct === product.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                >
                   <FiShoppingCart /> Add to Cart
                 </button>
               </div>

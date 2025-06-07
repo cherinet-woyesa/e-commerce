@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,12 +21,16 @@ import {
   RiLogoutBoxLine,
   RiFlashlightFill
 } from 'react-icons/ri';
+import WishlistDropdown from './WishlistDropdown';
+import NotificationDropdown from './NotificationDropdown';
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHovering, setIsHovering] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { cartItems } = useCart();
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const { cartItems, wishlistCount } = useCart();
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -124,19 +128,42 @@ const Navbar = () => {
               <FaSearch className="absolute left-3 top-3 text-gray-400" />
             </div>
 
-            <Link to="/wishlist" className="p-2 text-gray-600 hover:text-purple-600 relative">
-              <FaHeart className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                3
-              </span>
-            </Link>
+            <div className="relative">
+              <button
+                onClick={() => setIsWishlistOpen(!isWishlistOpen)}
+                className="p-2 text-gray-600 hover:text-purple-600 relative"
+              >
+                <FaHeart className="h-5 w-5" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {wishlistCount}
+                  </span>
+                )}
+              </button>
+              <WishlistDropdown 
+                isOpen={isWishlistOpen} 
+                onClose={() => setIsWishlistOpen(false)} 
+              />
+            </div>
 
-            <Link to="/notifications" className="p-2 text-gray-600 hover:text-purple-600 relative">
-              <IoMdNotificationsOutline className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                5
-              </span>
-            </Link>
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setIsNotificationOpen(!isNotificationOpen);
+                  setIsWishlistOpen(false);
+                }}
+                className="p-2 text-gray-600 hover:text-purple-600 relative"
+              >
+                <IoMdNotificationsOutline className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  3
+                </span>
+              </button>
+              <NotificationDropdown
+                isOpen={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+              />
+            </div>
 
             <Link to="/cart" className="p-2 text-gray-600 hover:text-purple-600 relative">
               <FaShoppingCart className="h-5 w-5" />

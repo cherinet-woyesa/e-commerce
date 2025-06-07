@@ -1,51 +1,65 @@
 import React, { useState, useEffect } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
 const StripePaymentForm = ({ amount, onSubmit }) => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [cardElement, setCardElement] = useState(null);
 
   useEffect(() => {
-    const form = document.querySelector('.mock-card-form');
-    if (form) {
-      form.addEventListener('submit', handleMockSubmit);
-      return () => form.removeEventListener('submit', handleMockSubmit);
-    }
+    const stripe = stripePromise.then(stripe => {
+      const elements = stripe.elements();
+      const card = elements.create('card');
+      card.mount('#card-element');
+      setCardElement(card);
+
+      card.on('change', ({ error }) => {
+        setError(error ? error.message : '');
+      });
+
+      return () => {
+        card.unmount();
+      };
+    });
+
+    return () => {
+      stripe.then(stripe => {
+        if (cardElement) {
+          cardElement.unmount();
+        }
+      });
+    };
   }, []);
 
-  const handleMockSubmit = async (e) => {
-    e.preventDefault();
-    
-    const form = e.target.closest('.mock-card-form');
-    const cardNumber = form.querySelector('input[placeholder="4242 4242 4242 4242"]');
-    const expiration = form.querySelector('input[placeholder="MM/YY"]');
-    const cvc = form.querySelector('input[placeholder="CVC"]');
-
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Validate mock card data
-      if (!cardNumber.value || !expiration.value || !cvc.value) {
-        throw new Error('Please fill in all fields');
-      }
+      const stripe = await stripePromise;
+      const { token } = await stripe.createToken(cardElement);
 
-      // Simulate successful payment
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onSubmit({
-        id: 'mock_payment_' + Date.now(),
-        card: {
-          last4: cardNumber.value.slice(-4),
-          brand: 'visa',
-          exp_month: parseInt(expiration.value.split('/')[0]),
-          exp_year: parseInt(expiration.value.split('/')[1])
-        }
-      });
+      if (token) {
+        onSubmit({
+          id: token.id,
+          card: {
+            last4: token.card.last4,
+            brand: token.card.brand,
+            exp_month: token.card.exp_month,
+            exp_year: token.card.exp_year
+          }
+        });
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="space-y-4">

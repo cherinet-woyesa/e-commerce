@@ -13,7 +13,7 @@ const HeroSection = () => {
       cta: "Shop Now",
       secondaryCta: "New Arrivals",
       discount: "25% Off",
-      image: "https://images.unsplash.com/photo-1606813902951-b90cfad6d332?auto=format&fit=crop&w=800&q=80",
+      image: "land.avif",
       bgGradient: "from-purple-600 to-blue-600"
     },
     {
@@ -81,10 +81,13 @@ const HeroSection = () => {
                   <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
                 </Link>
                 
-                <button className="flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full font-semibold hover:bg-white/20 border border-white/20 transition-all duration-300 group">
+                <Link
+                  to="/new-arrivals"
+                  className="flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full font-semibold hover:bg-white/20 border border-white/20 transition-all duration-300 group"
+                >
                   {heroSlides[currentSlide].secondaryCta}
                   <FiShoppingBag className="group-hover:scale-110 transition-transform" />
-                </button>
+                </Link>
               </div>
               
               {/* Trust indicators */}
